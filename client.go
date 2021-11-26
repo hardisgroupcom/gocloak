@@ -3008,13 +3008,19 @@ func (client *gocloak) DeleteScope(ctx context.Context, token, realm, idOfClient
 }
 
 // GetPolicy returns a client's policy with the given id
-func (client *gocloak) GetPolicy(ctx context.Context, token, realm, idOfClient, policyID string) (*PolicyRepresentation, error) {
+func (client *gocloak) GetPolicy(ctx context.Context, token, realm, idOfClient, policyType, policyID string) (*PolicyRepresentation, error) {
 	const errMessage = "could not get policy"
+
+	path := []string{"clients", idOfClient, "authz", "resource-server", "policy"}
+	if !NilOrEmpty(&policyType) {
+		path = append(path, policyType)
+	}
+	path = append(path, policyID)
 
 	var result PolicyRepresentation
 	resp, err := client.getRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
-		Get(client.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "policy", policyID))
+		Get(client.getAdminRealmURL(realm, path...))
 
 	if err := checkForError(resp, err, errMessage); err != nil {
 		return nil, err
