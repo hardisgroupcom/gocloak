@@ -441,7 +441,7 @@ type GoCloak interface {
 	GetPermissionScopes(ctx context.Context, token, realm, idOfClient, permissionID string) ([]*PermissionScope, error)
 
 	// GetPolicy returns a client's policy with the given id, using access token from admin
-	GetPolicy(ctx context.Context, token, realm, idOfClient, policyID string) (*PolicyRepresentation, error)
+	GetPolicy(ctx context.Context, token, realm, idOfClient, policyType, policyID string) (*PolicyRepresentation, error)
 	// GetPolicies returns policies associated with the client, using access token from admin
 	GetPolicies(ctx context.Context, token, realm, idOfClient string, params GetPolicyParams) ([]*PolicyRepresentation, error)
 	// CreatePolicy creates a policy associated with the client, using access token from admin
