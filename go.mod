@@ -1,4 +1,4 @@
-module https://github.com/hardisgroupcom/gocloak/v10
+module github.com/hardisgroupcom/gocloak/v10
 
 go 1.15
 
