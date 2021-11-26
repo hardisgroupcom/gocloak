@@ -398,7 +398,7 @@ type GoCloak interface {
  UpdateScope(ctx context.Context, token, realm, idOfClient string, resource ScopeRepresentation) error
  DeleteScope(ctx context.Context, token, realm, idOfClient, scopeID string) error
 
- GetPolicy(ctx context.Context, token, realm, idOfClient, policyID string) (*PolicyRepresentation, error)
+ GetPolicy(ctx context.Context, token, realm, idOfClient, policyType, policyID string) (*PolicyRepresentation, error)
  GetPolicies(ctx context.Context, token, realm, idOfClient string, params GetPolicyParams) ([]*PolicyRepresentation, error)
  CreatePolicy(ctx context.Context, token, realm, idOfClient string, policy PolicyRepresentation) (*PolicyRepresentation, error)
  UpdatePolicy(ctx context.Context, token, realm, idOfClient string, policy PolicyRepresentation) error
