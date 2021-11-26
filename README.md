@@ -222,9 +222,9 @@ type GoCloak interface {
  SetRestyClient(restyClient *resty.Client)
 
  GetToken(ctx context.Context, realm string, options TokenOptions) (*JWT, error)
- GetRequestingPartyToken(ctx context.Context, token, realm string, options RequestingPartyTokenOptions) (*JWT, error)
- GetRequestingPartyPermissions(ctx context.Context, token, realm string, options RequestingPartyTokenOptions) (*[]RequestingPartyPermission, error)
- GetRequestingPartyPermissionDecision(ctx context.Context, token, realm string, options RequestingPartyTokenOptions) (*RequestingPartyPermissionDecision, error)
+ GetRequestingPartyToken(ctx context.Context, token, clientID, clientSecret, realm string, options RequestingPartyTokenOptions) (*JWT, error)
+ GetRequestingPartyPermissions(ctx context.Context, token, clientID, clientSecret, realm string, options RequestingPartyTokenOptions) (*[]RequestingPartyPermission, error)
+ GetRequestingPartyPermissionDecision(ctx context.Context, token, clientID, clientSecret, realm string, options RequestingPartyTokenOptions) (*RequestingPartyPermissionDecision, error)
 
  Login(ctx context.Context, clientID, clientSecret, realm, username, password string) (*JWT, error)
  LoginOtp(ctx context.Context, clientID, clientSecret, realm, username, password, totp string) (*JWT, error)
@@ -398,7 +398,7 @@ type GoCloak interface {
  UpdateScope(ctx context.Context, token, realm, idOfClient string, resource ScopeRepresentation) error
  DeleteScope(ctx context.Context, token, realm, idOfClient, scopeID string) error
 
- GetPolicy(ctx context.Context, token, realm, idOfClient, policyID string) (*PolicyRepresentation, error)
+ GetPolicy(ctx context.Context, token, realm, idOfClient, policyType, policyID string) (*PolicyRepresentation, error)
  GetPolicies(ctx context.Context, token, realm, idOfClient string, params GetPolicyParams) ([]*PolicyRepresentation, error)
  CreatePolicy(ctx context.Context, token, realm, idOfClient string, policy PolicyRepresentation) (*PolicyRepresentation, error)
  UpdatePolicy(ctx context.Context, token, realm, idOfClient string, policy PolicyRepresentation) error
