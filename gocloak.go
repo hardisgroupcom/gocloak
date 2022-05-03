@@ -253,6 +253,8 @@ type GoCloak interface {
 	CreateClientRole(ctx context.Context, accessToken, realm, idOfClient string, role Role) (string, error)
 	// DeleteClientRole deletes the given role
 	DeleteClientRole(ctx context.Context, accessToken, realm, idOfClient, roleName string) error
+	// DeleteClientRoleById deletes the given role id
+	DeleteClientRoleByID(ctx context.Context, accessToken, realm, roleID string) error
 	// DeleteClientRoleFromUser removes a client role from from the user
 	DeleteClientRoleFromUser(ctx context.Context, token, realm, idOfClient, userID string, roles []Role) error
 	// DeleteClientRoleFromGroup removes a client role from from the group

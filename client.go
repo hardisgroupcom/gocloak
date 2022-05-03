@@ -902,6 +902,20 @@ func (client *gocloak) DeleteClientRole(ctx context.Context, token, realm, idOfC
 	return checkForError(resp, err, errMessage)
 }
 
+// DeleteClientRoleById deletes role for the given client in realm using role ID
+func (client *gocloak) DeleteClientRoleByID(ctx context.Context, token, realm, roleID string) error {
+	const errMessage = "could not delete client role by id"
+
+	resp, err := client.getRequestWithBearerAuth(ctx, token).
+		Delete(client.getAdminRealmURL(realm, "roles-by-id", roleID))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (client *gocloak) DeleteClientScope(ctx context.Context, token, realm, scopeID string) error {
 	const errMessage = "could not delete client scope"
 
