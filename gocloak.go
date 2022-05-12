@@ -318,6 +318,9 @@ type GoCloak interface {
 	// DeleteAuthenticationExecution delete a single execution with the given ID
 	DeleteAuthenticationExecution(ctx context.Context, token, realm, executionID string) error
 
+	//CreateAuthenticationExecutionFlow creates a new flow execution for the given flow name in the given realm
+	CreateAuthenticationExecutionFlow(ctx context.Context, token, realm, flow string, execution CreateAuthenticationExecutionFlowRepresentation) error
+
 	// *** Users ***
 	// CreateUser creates a new user
 	CreateUser(ctx context.Context, token, realm string, user User) (string, error)
@@ -495,6 +498,14 @@ type GoCloak interface {
 	// ---------------
 	// Events API
 	// ---------------
+
 	// GetEvents returns events
 	GetEvents(ctx context.Context, token string, realm string, params GetEventsParams) ([]*EventRepresentation, error)
+
+	// -------------------
+	// RequiredActions API
+	// -------------------
+
+	// UpdateRequiredAction updates a required action for a given realm
+	UpdateRequiredAction(ctx context.Context, token string, realm string, requiredAction RequiredActionProviderRepresentation) error
 }

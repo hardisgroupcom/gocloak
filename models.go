@@ -197,19 +197,13 @@ type SetPasswordRequest struct {
 
 // Component is a component
 type Component struct {
-	ID              *string          `json:"id,omitempty"`
-	Name            *string          `json:"name,omitempty"`
-	ProviderID      *string          `json:"providerId,omitempty"`
-	ProviderType    *string          `json:"providerType,omitempty"`
-	ParentID        *string          `json:"parentId,omitempty"`
-	ComponentConfig *ComponentConfig `json:"config,omitempty"`
-	SubType         *string          `json:"subType,omitempty"`
-}
-
-// ComponentConfig is a componentconfig
-type ComponentConfig struct {
-	Priority  *[]string `json:"priority,omitempty"`
-	Algorithm *[]string `json:"algorithm,omitempty"`
+	ID              *string              `json:"id,omitempty"`
+	Name            *string              `json:"name,omitempty"`
+	ProviderID      *string              `json:"providerId,omitempty"`
+	ProviderType    *string              `json:"providerType,omitempty"`
+	ParentID        *string              `json:"parentId,omitempty"`
+	ComponentConfig *map[string][]string `json:"config,omitempty"`
+	SubType         *string              `json:"subType,omitempty"`
 }
 
 // KeyStoreConfig holds the keyStoreConfig
@@ -263,6 +257,7 @@ type UserGroup struct {
 type GetUsersParams struct {
 	BriefRepresentation *bool   `json:"briefRepresentation,string,omitempty"`
 	Email               *string `json:"email,omitempty"`
+	EmailVerified       *bool   `json:"emailVerified,string,omitempty"`
 	Enabled             *bool   `json:"enabled,string,omitempty"`
 	Exact               *bool   `json:"exact,string,omitempty"`
 	First               *int    `json:"first,string,omitempty"`
@@ -271,6 +266,7 @@ type GetUsersParams struct {
 	IDPUserID           *string `json:"idpUserId,omitempty"`
 	LastName            *string `json:"lastName,omitempty"`
 	Max                 *int    `json:"max,string,omitempty"`
+	Q                   *string `json:"q,omitempty"`
 	Search              *string `json:"search,omitempty"`
 	Username            *string `json:"username,omitempty"`
 }
@@ -797,17 +793,29 @@ type CreateAuthenticationExecutionRepresentation struct {
 	Provider *string `json:"provider,omitempty"`
 }
 
+// CreateAuthenticationExecutionFlowRepresentation contains the provider to be used for a new authentication representation
+type CreateAuthenticationExecutionFlowRepresentation struct {
+	Alias       *string `json:"alias,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Provider    *string `json:"provider,omitempty"`
+	Type        *string `json:"type,omitempty"`
+}
+
 // ModifyAuthenticationExecutionRepresentation is the payload for updating an execution representation
 type ModifyAuthenticationExecutionRepresentation struct {
-	ID                  *string `json:"id,omitempty"`
-	Provider            *string `json:"providerId,omitempty"`
-	AuthenticatorConfig *string `json:"authenticatorConfig,omitempty"`
-	AuthenticatorFlow   *bool   `json:"authenticatorFlow,omitempty"`
-	AutheticatorFlow    *bool   `json:"autheticatorFlow,omitempty"`
-	FlowAlias           *string `json:"flowAlias,omitempty"`
-	Priority            *int    `json:"priority,omitempty"`
-	Requirement         *string `json:"requirement,omitempty"`
-	UserSetupAllowed    *bool   `json:"userSetupAllowed,omitempty"`
+	ID                   *string   `json:"id,omitempty"`
+	ProviderID           *string   `json:"providerId,omitempty"`
+	AuthenticationConfig *string   `json:"authenticationConfig,omitempty"`
+	AuthenticationFlow   *bool     `json:"authenticationFlow,omitempty"`
+	Requirement          *string   `json:"requirement,omitempty"`
+	FlowID               *string   `json:"flowId"`
+	DisplayName          *string   `json:"displayName,omitempty"`
+	Alias                *string   `json:"alias,omitempty"`
+	RequirementChoices   *[]string `json:"requirementChoices,omitempty"`
+	Configurable         *bool     `json:"configurable,omitempty"`
+	Level                *int      `json:"level,omitempty"`
+	Index                *int      `json:"index,omitempty"`
+	Description          *string   `json:"description"`
 }
 
 // MultiValuedHashMap represents something
@@ -832,6 +840,7 @@ type TokenOptions struct {
 	Password            *string   `json:"password,omitempty"`
 	Totp                *string   `json:"totp,omitempty"`
 	Code                *string   `json:"code,omitempty"`
+	RedirectURI         *string   `json:"redirect_uri,omitempty"`
 	ClientAssertionType *string   `json:"client_assertion_type,omitempty"`
 	ClientAssertion     *string   `json:"client_assertion,omitempty"`
 	SubjectToken        *string   `json:"subject_token,omitempty"`
@@ -1181,9 +1190,9 @@ type GetEventsParams struct {
 	Client    *string  `json:"client,omitempty"`
 	DateFrom  *string  `json:"dateFrom,omitempty"`
 	DateTo    *string  `json:"dateTo,omitempty"`
-	First     *int32   `json:"first,omitempty"`
+	First     *int32   `json:"first,string,omitempty"`
 	IPAddress *string  `json:"ipAddress,omitempty"`
-	Max       *int32   `json:"max,omitempty"`
+	Max       *int32   `json:"max,string,omitempty"`
 	Type      []string `json:"type,omitempty"`
 	UserID    *string  `json:"user,omitempty"`
 }
@@ -1229,6 +1238,18 @@ type CredentialRepresentation struct {
 	UserLabel      *string `json:"userLabel,omitempty"`
 }
 
+// RequiredActionProviderRepresentation is a representation of required actions
+// v15: https://www.keycloak.org/docs-api/15.0/rest-api/index.html#_requiredactionproviderrepresentation
+type RequiredActionProviderRepresentation struct {
+	Alias         *string            `json:"alias,omitempty"`
+	Config        *map[string]string `json:"config,omitempty"`
+	DefaultAction *bool              `json:"defaultAction,omitempty"`
+	Enabled       *bool              `json:"enabled,omitempty"`
+	Name          *string            `json:"name,omitempty"`
+	Priority      *int32             `json:"priority,omitempty"`
+	ProviderID    *string            `json:"providerId,omitempty"`
+}
+
 // prettyStringStruct returns struct formatted into pretty string
 func prettyStringStruct(t interface{}) string {
 
@@ -1251,7 +1272,6 @@ func (v *RetrospecTokenResult) String() string                      { return pre
 func (v *User) String() string                                      { return prettyStringStruct(v) }
 func (v *SetPasswordRequest) String() string                        { return prettyStringStruct(v) }
 func (v *Component) String() string                                 { return prettyStringStruct(v) }
-func (v *ComponentConfig) String() string                           { return prettyStringStruct(v) }
 func (v *KeyStoreConfig) String() string                            { return prettyStringStruct(v) }
 func (v *ActiveKeys) String() string                                { return prettyStringStruct(v) }
 func (v *Key) String() string                                       { return prettyStringStruct(v) }
@@ -1321,3 +1341,4 @@ func (v *GetUserPermissionParams) String() string                   { return pre
 func (v *ResourcePolicyRepresentation) String() string              { return prettyStringStruct(v) }
 func (v *GetResourcePoliciesParams) String() string                 { return prettyStringStruct(v) }
 func (v *CredentialRepresentation) String() string                  { return prettyStringStruct(v) }
+func (v *RequiredActionProviderRepresentation) String() string      { return prettyStringStruct(v) }

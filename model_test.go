@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Nerzal/gocloak/v10"
+	"github.com/Nerzal/gocloak/v11"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -222,7 +222,6 @@ func TestStringerOmitEmpty(t *testing.T) {
 		&gocloak.User{},
 		&gocloak.SetPasswordRequest{},
 		&gocloak.Component{},
-		&gocloak.ComponentConfig{},
 		&gocloak.KeyStoreConfig{},
 		&gocloak.ActiveKeys{},
 		&gocloak.Key{},

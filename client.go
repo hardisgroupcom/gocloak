@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
 
-	"github.com/Nerzal/gocloak/v10/pkg/jwx"
+	"github.com/Nerzal/gocloak/v11/pkg/jwx"
 )
 
 type gocloak struct {
@@ -530,7 +530,7 @@ func (client *gocloak) LoginAdmin(ctx context.Context, username, password, realm
 	})
 }
 
-// Login performs a login with client credentials
+// LoginClient performs a login with client credentials
 func (client *gocloak) LoginClient(ctx context.Context, clientID, clientSecret, realm string) (*JWT, error) {
 	return client.GetToken(ctx, realm, TokenOptions{
 		ClientID:     &clientID,
@@ -542,15 +542,18 @@ func (client *gocloak) LoginClient(ctx context.Context, clientID, clientSecret, 
 // LoginClientTokenExchange will exchange the presented token for a user's token
 // Requires Token-Exchange is enabled: https://www.keycloak.org/docs/latest/securing_apps/index.html#_token-exchange
 func (client *gocloak) LoginClientTokenExchange(ctx context.Context, clientID, token, clientSecret, realm, targetClient, userID string) (*JWT, error) {
-	return client.GetToken(ctx, realm, TokenOptions{
+	tokenOptions := TokenOptions{
 		ClientID:           &clientID,
 		ClientSecret:       &clientSecret,
 		GrantType:          StringP("urn:ietf:params:oauth:grant-type:token-exchange"),
 		SubjectToken:       &token,
 		RequestedTokenType: StringP("urn:ietf:params:oauth:token-type:refresh_token"),
 		Audience:           &targetClient,
-		RequestedSubject:   &userID,
-	})
+	}
+	if userID != "" {
+		tokenOptions.RequestedSubject = &userID
+	}
+	return client.GetToken(ctx, realm, tokenOptions)
 }
 
 // LoginClientSignedJWT performs a login with client credentials and signed jwt claims
@@ -2226,6 +2229,15 @@ func (client *gocloak) DeleteAuthenticationExecution(ctx context.Context, token,
 	return checkForError(resp, err, errMessage)
 }
 
+//CreateAuthenticationExecutionFlow creates a new execution for the given flow name in the given realm
+func (client *gocloak) CreateAuthenticationExecutionFlow(ctx context.Context, token, realm, flow string, executionFlow CreateAuthenticationExecutionFlowRepresentation) error {
+	const errMessage = "could not create authentication execution flow"
+	resp, err := client.getRequestWithBearerAuth(ctx, token).SetBody(executionFlow).
+		Post(client.getAdminRealmURL(realm, "authentication", "flows", flow, "executions", "flow"))
+
+	return checkForError(resp, err, errMessage)
+}
+
 // -----
 // Users
 // -----
@@ -3710,4 +3722,18 @@ func (client *gocloak) CreateClientScopesScopeMappingsRealmRoles(ctx context.Con
 		Post(client.getAdminRealmURL(realm, "client-scopes", clientScopeID, "scope-mappings", "realm"))
 
 	return checkForError(resp, err, errMessage)
+}
+
+// UpdateRequiredAction updates a required action for a given realm
+func (client *gocloak) UpdateRequiredAction(ctx context.Context, token string, realm string, requiredAction RequiredActionProviderRepresentation) error {
+	const errMessage = "could not update required action"
+
+	if NilOrEmpty(requiredAction.ProviderID) {
+		return errors.New("providerId is required for updating a required action")
+	}
+	_, err := client.getRequestWithBearerAuth(ctx, token).
+		SetBody(requiredAction).
+		Put(client.getAdminRealmURL(realm, "authentication", "required-actions", *requiredAction.ProviderID))
+
+	return err
 }
