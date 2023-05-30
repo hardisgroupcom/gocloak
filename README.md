@@ -32,13 +32,13 @@ For release notes please consult the specific releases [here](https://github.com
 ### Installation
 
 ```shell
-go get github.com/Nerzal/gocloak/v11
+go get github.com/Nerzal/gocloak/v13
 ```
 
 ### Importing
 
 ```go
- import "github.com/Nerzal/gocloak/v11"
+ import "github.com/Nerzal/gocloak/v13"
 ```
 
 ### Create New User
@@ -80,7 +80,7 @@ go get github.com/Nerzal/gocloak/v11
   panic("Inspection failed:"+ err.Error())
  }
 
- if !rptResult.Active {
+ if !*rptResult.Active {
   panic("Token is not active")
  }
 
@@ -160,6 +160,7 @@ type GoCloak interface {
  CreateClientScopeMappingsRealmRoles(ctx context.Context, token, realm, idOfClient string, roles []Role) error
  CreateClientScopeMappingsClientRoles(ctx context.Context, token, realm, idOfClient, idOfSelectedClient string, roles []Role) error
  CreateClientScopesScopeMappingsRealmRoles(ctx context.Context, token, realm, idOfCLientScope string, roles []Role) error
+ CreateClientScopesScopeMappingsClientRoles(ctx context.Context, token, realm, idOfClientScope, idOfClient string, roles []Role) error
 
  UpdateUser(ctx context.Context, accessToken, realm string, user User) error
  UpdateGroup(ctx context.Context, accessToken, realm string, updatedGroup Group) error
@@ -177,6 +178,7 @@ type GoCloak interface {
  DeleteClientScopeMappingsRealmRoles(ctx context.Context, token, realm, idOfClient string, roles []Role) error
  DeleteClientScopeMappingsClientRoles(ctx context.Context, token, realm, idOfClient, idOfSelectedClient string, roles []Role) error
  DeleteClientScopesScopeMappingsRealmRoles(ctx context.Context, token, realm, idOfCLientScope string, roles []Role) error
+ DeleteClientScopesScopeMappingsClientRoles(ctx context.Context, token, realm, idOfClientScope, ifOfClient string, roles []Role) error
 
  GetClient(ctx context.Context, accessToken, realm, idOfClient string) (*Client, error)
  GetClientsDefaultScopes(ctx context.Context, token, realm, idOfClient string) ([]*ClientScope, error)
@@ -193,8 +195,10 @@ type GoCloak interface {
  GetClientScopeMappingsRealmRoles(ctx context.Context, token, realm, idOfClient string) ([]*Role, error)
  GetClientScopeMappingsRealmRolesAvailable(ctx context.Context, token, realm, idOfClient string) ([]*Role, error)
  GetClientScopesScopeMappingsRealmRolesAvailable(ctx context.Context, token, realm, idOfClientScope string) ([]*Role, error)
+ GetClientScopesScopeMappingsClientRolesAvailable(ctx context.Context, token, realm, idOfClientScope, idOfClient string) ([]*Role, error)
  GetClientScopeMappingsClientRoles(ctx context.Context, token, realm, idOfClient, idOfSelectedClient string) ([]*Role, error)
  GetClientScopesScopeMappingsRealmRoles(ctx context.Context, token, realm, idOfClientScope string) ([]*Role, error)
+ GetClientScopesScopeMappingsClientRoles(ctx context.Context, token, realm, idOfClientScope, idOfClient string) ([]*Role, error)
  GetClientScopeMappingsClientRolesAvailable(ctx context.Context, token, realm, idOfClient, idOfSelectedClient string) ([]*Role, error)
  GetClientSecret(ctx context.Context, token, realm, idOfClient string) (*CredentialRepresentation, error)
  GetClientServiceAccount(ctx context.Context, token, realm, idOfClient string) (*User, error)
@@ -338,7 +342,14 @@ type GoCloak interface {
  MoveCredentialBehind(ctx context.Context, token, realm, userID, credentialID, newPreviousCredentialID string) error
  MoveCredentialToFirst(ctx context.Context, token, realm, userID, credentialID string) error
 
- // *** Identity Providers ***
+// *** Authentication Flows ***
+GetAuthenticationFlows(ctx context.Context, token, realm string) ([]*AuthenticationFlowRepresentation, error)
+GetAuthenticationFlow(ctx context.Context, token, realm string, authenticationFlowID string) (*AuthenticationFlowRepresentation, error)
+CreateAuthenticationFlow(ctx context.Context, token, realm string, flow AuthenticationFlowRepresentation) error
+UpdateAuthenticationFlow(ctx context.Context, token, realm string, flow AuthenticationFlowRepresentation, authenticationFlowID string) (*AuthenticationFlowRepresentation, error)
+DeleteAuthenticationFlow(ctx context.Context, token, realm, flowID string) error
+
+// *** Identity Providers ***
 
  CreateIdentityProvider(ctx context.Context, token, realm string, providerRep IdentityProviderRepresentation) (string, error)
  GetIdentityProvider(ctx context.Context, token, realm, alias string) (*IdentityProviderRepresentation, error)
@@ -463,6 +474,18 @@ yields
 ```
 
 Note that empty parameters are not included, because of the use of ```omitempty``` in the type definitions.
+
+## Examples
+
+* [Add client role to user](./examples/ADD_CLIENT_ROLE_TO_USER.md)
+
+* [Create User Federation & Sync](./examples/USER_FEDERATION.md)
+
+* [Create User Federation & Sync with group ldap mapper](./examples/USER_FEDERATION_GROUP_LDAP_MAPPER.md)
+
+* [Create User Federation & Sync with role ldap mapper](./examples/USER_FEDERATION_ROLE_LDAP_MAPPER.md)
+
+* [Create User Federation & Sync with user attribute ldap mapper](./examples/USER_FEDERATION_USER_ATTRIBUTE_LDAP_MAPPER.md)
 
 ## License
 

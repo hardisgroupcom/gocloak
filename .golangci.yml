@@ -9,9 +9,8 @@ linters:
     - gofmt
     - misspell
     - gosec
-    - maligned
     - unconvert
-    - golint
+    - revive
     - gocognit
     - gocyclo
   fast: true
