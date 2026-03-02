@@ -95,7 +95,9 @@ func (g *GoCloak) getServerVersion(ctx context.Context, token string) (string, e
 		return "", err
 	}
 
-	g.Config.version = *(serverInfo.SystemInfo.Version)
+	if serverInfo != nil && serverInfo.SystemInfo != nil {
+		g.Config.version = *(serverInfo.SystemInfo.Version)
+	}
 
 	return g.Config.version, nil
 }
