@@ -1,4 +1,4 @@
-module ithub.com/hardisgroupcom/gocloak
+module github.com/hardisgroupcom/gocloak
 
 go 1.23.0
 
