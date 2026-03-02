@@ -288,6 +288,14 @@ func (g *GoCloak) getAttackDetectionURL(realm string, user string, path ...strin
 	return makeURL(path...)
 }
 
+func (g *GoCloak) getAdminURL(path ...string) string {
+	// Extract just the admin prefix from authAdminRealms
+	// authAdminRealms is either "admin/realms" or "auth/admin/realms"
+	adminPrefix := strings.TrimSuffix(g.Config.authAdminRealms, "/realms")
+	path = append([]string{g.basePath, adminPrefix}, path...)
+	return makeURL(path...)
+}
+
 // ==== Functional Options ===
 
 // SetLegacyWildFlySupport maintain legacy WildFly support.
@@ -354,7 +362,7 @@ func (g *GoCloak) GetServerInfo(ctx context.Context, accessToken string) (*Serve
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, accessToken).
 		SetResult(&result).
-		Get(makeURL(g.basePath, "admin", "serverinfo"))
+		Get(g.getAdminURL("serverinfo"))
 
 	if err := checkForError(resp, err, errMessage); err != nil {
 		return nil, err
