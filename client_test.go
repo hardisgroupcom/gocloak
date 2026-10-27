@@ -484,6 +484,20 @@ func SetUpTestUser(t testing.TB, client gocloak.GoCloakIface) {
 			cfg.GoCloak.Password,
 			false)
 		require.NoError(t, err, "SetPassword failed")
+
+		// Keycloak can take a moment to propagate a credential update before it is
+		// usable for a direct-grant login, so confirm the new password is active
+		// before letting any parallel test try to log in with it.
+		require.Eventually(t, func() bool {
+			_, loginErr := client.Login(
+				context.Background(),
+				cfg.GoCloak.ClientID,
+				cfg.GoCloak.ClientSecret,
+				cfg.GoCloak.Realm,
+				cfg.GoCloak.UserName,
+				cfg.GoCloak.Password)
+			return loginErr == nil
+		}, 5*time.Second, 100*time.Millisecond, "test user password did not become active in time")
 	})
 }
 
@@ -605,6 +619,45 @@ func Test_SetRestyClient(t *testing.T) {
 	client.SetRestyClient(newRestyClient)
 	restyClient := client.RestyClient()
 	require.Equal(t, newRestyClient, restyClient)
+}
+
+func Test_SetServerVersion(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("returns configured version without serverinfo call", func(t *testing.T) {
+		t.Parallel()
+
+		client := gocloak.NewClient("http://example.com", gocloak.SetServerVersion("25.0.0"))
+		var serverInfoRequests int32
+		client.RestyClient().OnBeforeRequest(func(_ *resty.Client, r *resty.Request) error {
+			if strings.Contains(r.URL, "serverinfo") {
+				atomic.AddInt32(&serverInfoRequests, 1)
+			}
+			return nil
+		})
+
+		version, err := client.GetServerVersion(ctx, "token")
+		require.NoError(t, err)
+		require.Equal(t, "25.0.0", version)
+		require.Equal(t, int32(0), serverInfoRequests)
+	})
+
+	t.Run("returns configured version", func(t *testing.T) {
+		t.Parallel()
+
+		for _, version := range []string{"19.0.0", "25.0.0"} {
+			t.Run(version, func(t *testing.T) {
+				t.Parallel()
+
+				client := gocloak.NewClient("http://example.com", gocloak.SetServerVersion(version))
+				got, err := client.GetServerVersion(ctx, "token")
+				require.NoError(t, err)
+				require.Equal(t, version, got)
+			})
+		}
+	})
+
 }
 
 func Test_checkForError(t *testing.T) {
@@ -895,13 +948,23 @@ func Test_GetRequestingPartyPermissionDecision(t *testing.T) {
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
-	token, err := client.Login(
-		context.Background(),
-		cfg.GoCloak.ClientID,
-		cfg.GoCloak.ClientSecret,
-		cfg.GoCloak.Realm,
-		cfg.GoCloak.UserName,
-		cfg.GoCloak.Password)
+
+	// Under the heavy concurrent test load this suite generates, Keycloak can
+	// occasionally answer a valid direct-grant login with a spurious
+	// "invalid_grant: Invalid user credentials" for a single request. Retry
+	// briefly rather than fail the test on that transient blip.
+	var token *gocloak.JWT
+	var err error
+	require.Eventually(t, func() bool {
+		token, err = client.Login(
+			context.Background(),
+			cfg.GoCloak.ClientID,
+			cfg.GoCloak.ClientSecret,
+			cfg.GoCloak.Realm,
+			cfg.GoCloak.UserName,
+			cfg.GoCloak.Password)
+		return err == nil
+	}, 5*time.Second, 250*time.Millisecond, "login failed")
 	require.NoError(t, err, "login failed")
 
 	dec, err := client.GetRequestingPartyPermissionDecision(
@@ -7040,6 +7103,165 @@ func TestGocloak_CreateAuthenticationFlowsAndCreateAuthenticationExecutionAndFlo
 		*retrievedAuthFlow.ID,
 	)
 	require.NoError(t, err, "Failed to delete authentication flow")
+}
+
+func TestGocloak_AuthenticatorConfigCRUD(t *testing.T) {
+	t.Parallel()
+	cfg := GetConfig(t)
+	client := NewClientWithDebug(t)
+	token := GetAdminToken(t, client)
+
+	configDescription, err := client.GetAuthenticatorConfigDescription(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		"identity-provider-redirector",
+	)
+	require.NoError(t, err, "Failed to get authenticator config description")
+	require.NotNil(t, configDescription)
+	require.Equal(t, "identity-provider-redirector", gocloak.PString(configDescription.ProviderID))
+	require.NotEmpty(t, configDescription.Properties)
+
+	configID, err := client.CreateAuthenticatorConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		gocloak.AuthenticatorConfigRepresentation{
+			Alias:  gocloak.StringP("testauthenticatorconfig"),
+			Config: map[string]string{"defaultProvider": "someidp"},
+		},
+	)
+	require.NoError(t, err, "Failed to create authenticator config")
+	require.NotEmpty(t, configID)
+
+	fetchedConfig, err := client.GetAuthenticatorConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		configID,
+	)
+	require.NoError(t, err, "Failed to get authenticator config")
+	require.Equal(t, "testauthenticatorconfig", gocloak.PString(fetchedConfig.Alias))
+	require.Equal(t, "someidp", fetchedConfig.Config["defaultProvider"])
+
+	fetchedConfig.Config["defaultProvider"] = "anotheridp"
+	err = client.UpdateAuthenticatorConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		*fetchedConfig,
+		configID,
+	)
+	require.NoError(t, err, "Failed to update authenticator config")
+
+	updatedConfig, err := client.GetAuthenticatorConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		configID,
+	)
+	require.NoError(t, err, "Failed to get updated authenticator config")
+	require.Equal(t, "anotheridp", updatedConfig.Config["defaultProvider"])
+
+	err = client.DeleteAuthenticatorConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		configID,
+	)
+	require.NoError(t, err, "Failed to delete authenticator config")
+
+	_, err = client.GetAuthenticatorConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		configID,
+	)
+	require.Error(t, err, "GetAuthenticatorConfig should fail after deletion")
+}
+
+func TestGocloak_AuthenticationExecutionConfigCRUD(t *testing.T) {
+	t.Parallel()
+	cfg := GetConfig(t)
+	client := NewClientWithDebug(t)
+	token := GetAdminToken(t, client)
+
+	authFlow := gocloak.AuthenticationFlowRepresentation{
+		Alias:      gocloak.StringP("testexecconfigflow"),
+		BuiltIn:    gocloak.BoolP(false),
+		TopLevel:   gocloak.BoolP(true),
+		ProviderID: gocloak.StringP("basic-flow"),
+	}
+	err := client.CreateAuthenticationFlow(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		authFlow,
+	)
+	require.NoError(t, err, "Failed to create authentication flow")
+	defer func() {
+		flows, ferr := client.GetAuthenticationFlows(context.Background(), token.AccessToken, cfg.GoCloak.Realm)
+		require.NoError(t, ferr, "Failed to fetch authentication flows for cleanup")
+		for _, flow := range flows {
+			if gocloak.PString(flow.Alias) == *authFlow.Alias {
+				err = client.DeleteAuthenticationFlow(context.Background(), token.AccessToken, cfg.GoCloak.Realm, *flow.ID)
+				require.NoError(t, err, "Failed to delete authentication flow")
+				break
+			}
+		}
+	}()
+
+	err = client.CreateAuthenticationExecution(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		*authFlow.Alias,
+		gocloak.CreateAuthenticationExecutionRepresentation{
+			Provider: gocloak.StringP("identity-provider-redirector"),
+		},
+	)
+	require.NoError(t, err, "Failed to create authentication execution")
+
+	executions, err := client.GetAuthenticationExecutions(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		*authFlow.Alias,
+	)
+	require.NoError(t, err, "Failed to get authentication executions")
+
+	var executionID string
+	for _, execution := range executions {
+		if execution.ProviderID != nil && *execution.ProviderID == "identity-provider-redirector" {
+			executionID = *execution.ID
+			break
+		}
+	}
+	require.NotEmpty(t, executionID, "Failed to find created execution")
+
+	configID, err := client.CreateAuthenticationExecutionConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		executionID,
+		gocloak.AuthenticatorConfigRepresentation{
+			Alias:  gocloak.StringP("testexecconfig"),
+			Config: map[string]string{"defaultProvider": "someidp"},
+		},
+	)
+	require.NoError(t, err, "Failed to create authentication execution config")
+	require.NotEmpty(t, configID)
+
+	fetchedConfig, err := client.GetAuthenticationExecutionConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		executionID,
+		configID,
+	)
+	require.NoError(t, err, "Failed to get authentication execution config")
+	require.Equal(t, "testexecconfig", gocloak.PString(fetchedConfig.Alias))
+	require.Equal(t, "someidp", fetchedConfig.Config["defaultProvider"])
 }
 
 func TestGocloak_CreateAndGetRequiredAction(t *testing.T) {
